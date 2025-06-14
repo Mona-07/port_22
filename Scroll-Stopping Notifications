@@ -1,0 +1,117 @@
+import time
+import json
+from datetime import datetime
+from IPython.display import display, HTML, clear_output
+import ipywidgets as widgets
+
+class NotificationManager:
+    def __init__(self):
+        self.responses_file = "notification_responses.json"
+        self.load_responses()
+
+    def load_responses(self):
+        try:
+            with open(self.responses_file, 'r') as f:
+                self.responses = json.load(f)
+        except FileNotFoundError:
+            self.responses = {"yes": 0, "no": 0, "history": []}
+
+    def save_responses(self):
+        with open(self.responses_file, 'w') as f:
+            json.dump(self.responses, f, indent=4)
+
+    def show_notification(self, title, message):
+        """
+        Show a notification with yes/no buttons in the notebook
+        """
+        # Create a styled notification box
+        notification_html = f"""
+        <div style="
+            padding: 20px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        ">
+            <h3 style="margin-top: 0;">{title}</h3>
+            <p>{message}</p>
+        </div>
+        """
+        display(HTML(notification_html))
+        
+        # Create yes/no buttons
+        yes_button = widgets.Button(description='Yes', button_style='success')
+        no_button = widgets.Button(description='No', button_style='danger')
+        
+        # Create a horizontal box for the buttons
+        button_box = widgets.HBox([yes_button, no_button])
+        display(button_box)
+        
+        # Define button click handlers
+        def on_yes_click(b):
+            clear_output(wait=True)
+            self.handle_yes()
+            
+        def on_no_click(b):
+            clear_output(wait=True)
+            self.handle_no()
+        
+        # Attach handlers to buttons
+        yes_button.on_click(on_yes_click)
+        no_button.on_click(on_no_click)
+
+    def handle_yes(self):
+        """Handle yes response"""
+        self.responses["yes"] += 1
+        self.responses["history"].append({
+            "response": "yes",
+            "timestamp": datetime.now().isoformat()
+        })
+        self.save_responses()
+        display(HTML("""
+            <div style="color: green; padding: 10px;">
+                Redirecting to the next page...
+            </div>
+        """))
+        # In Colab, we'll just show a message instead of redirecting
+        display(HTML("""
+            <div style="padding: 10px; background-color: #e8f5e9; border-radius: 5px;">
+                <h3>Yes Response Registered!</h3>
+                <p>In a real application, this would redirect to the next page.</p>
+            </div>
+        """))
+
+    def handle_no(self):
+        """Handle no response"""
+        self.responses["no"] += 1
+        self.responses["history"].append({
+            "response": "no",
+            "timestamp": datetime.now().isoformat()
+        })
+        self.save_responses()
+        display(HTML("""
+            <div style="padding: 10px; background-color: #ffebee; border-radius: 5px;">
+                <h3>No Response Registered</h3>
+                <p>This response will be used for reinforcement learning.</p>
+            </div>
+        """))
+
+    def get_response_stats(self):
+        """Get statistics of responses"""
+        return {
+            "yes_count": self.responses["yes"],
+            "no_count": self.responses["no"],
+            "total_responses": len(self.responses["history"])
+        }
+
+def main():
+    manager = NotificationManager()
+    
+    # Show the notification
+    manager.show_notification(
+        title="Action Required",
+        message="Do you want to proceed? Click Yes or No below."
+    )
+
+if __name__ == "__main__":
+    main()
